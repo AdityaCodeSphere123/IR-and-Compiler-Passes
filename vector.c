@@ -23,12 +23,8 @@ int __attribute__((noinline)) f2(int n,int* restrict a, int* restrict b){
 void __attribute__((noinline)) f3(int n,int* restrict c,int* restrict a, int* restrict b,int* restrict guess){
 	for(int i = 0; i < n; i++){
 		int a_val = a[i];
-		int b_val =b[i];
-		if (guess[i]){
-			c[i]= a_val;
-		} else{
-			c[i] =b_val;
-		}
+		int b_val = b[i];
+		c[i] = guess[i] ? a_val : b_val;
 	}
 }
 
@@ -40,35 +36,28 @@ void __attribute__((noinline)) f4(int n,int* restrict c,int* restrict a,int* res
 	}
 }
 
-static void fill_float(float* p, int n, int seed){
-	for(int i = 0; i < n; i++)
-	{
-		p[i] = (float)((seed + i * 3) % 17);
+static void float_fill(float* p, int n, int start){
+	for(int i = 0; i < n; i++){
+		p[i] = (float)((start + i * 3) % 17);
 	}
 }
 
-static void fill_int(int* p, int n, int seed)
-{
-	for(int i = 0; i < n; i++)
-	{
-		p[i] = (seed + i * 5) % 13;
+static void int_fill(int* p, int n, int start){
+	for(int i = 0; i < n; i++){
+		p[i] = (start + i * 5) % 13;
 	}
 }
 
-static unsigned checksum(const float* f, int n, const int* a, int na, const int* b, int nb, int extra)
-{
+static unsigned checksum(const float* f, int n, const int* a, int na, const int* b, int nb, int extra){
 	unsigned h = (unsigned)extra;
 
-	for(int i = 0; i < n; i++)
-	{
+	for(int i = 0; i < n; i++){
 		h = h * 131u + (unsigned)(int)f[i];
 	}
-	for(int i = 0; i < na; i++)
-	{
+	for(int i = 0; i < na; i++){
 		h = h * 131u + (unsigned)a[i];
 	}
-	for(int i = 0; i < nb; i++)
-	{
+	for(int i = 0; i < nb; i++){
 		h = h * 131u + (unsigned)b[i];
 	}
 
@@ -81,15 +70,14 @@ int main()
 	static int ia[max_val], ib[max_val], ic[max_val], mypred[max_val], out[max_val * 2];
 	int sizes[5] = {7, 16, 1023, 1024, 2048};
 
-	for(int s = 0; s < 5; s++)
-	{
+	for(int s = 0; s < 5; s++){
 		int n = sizes[s];
 
-		fill_float(a, n, 1);
-		fill_float(b, n, 2);
-		fill_int(ia, n, 3);
-		fill_int(ib, n, 4);
-		fill_int(mypred, n, 5);
+		float_fill(a, n, 1);
+		float_fill(b, n, 2);
+		int_fill(ia, n, 3);
+		int_fill(ib, n, 4);
+		int_fill(mypred, n, 5);
 		f1(n, c, a, b, 3.0f);
 		int d = f2(n, ia, ib);
 		f3(n, ic, ia, ib, mypred);
