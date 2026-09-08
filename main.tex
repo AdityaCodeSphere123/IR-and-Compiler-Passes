@@ -844,9 +844,12 @@ there was no \texttt{<4 x i32>} \texttt{select}.
 The loop was changed to load both values first:
 
 \begin{lstlisting}[language={}]
-int left = a[i];
-int right = b[i];
-c[i] = mypred[i] ? left : right;
+int a_val = a[i];
+int b_val = b[i];
+if (guess[i])
+    c[i] = a_val;
+else
+    c[i] = b_val;
 \end{lstlisting}
 
 Now it vectorises. One step is
@@ -862,7 +865,7 @@ store <4 x i32> %42, ptr %46
 
 \texttt{\%34} is four predicates. \texttt{icmp eq} against zero gives a
 \texttt{<4 x i1>}. \texttt{select} picks \texttt{b} when the predicate is
-0 and \texttt{a} otherwise, which is the C ternary. Then four results
+0 and \texttt{a} otherwise, which is the C if/else. Then four results
 are stored.
 
 \subsection*{Vector-specific opcodes}

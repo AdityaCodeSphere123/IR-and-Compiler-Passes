@@ -1,50 +1,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define max_val 4096
 
-void __attribute__((noinline)) f1(int n, float* restrict c, float* restrict a, float* restrict b, float myalpha)
-{
-	for(int i = 0; i < n; i++)
-	{
-		c[i] = a[i] * myalpha + b[i];
+// c = a * alph + b
+void __attribute__((noinline)) f1(int n,float* restrict c,float* restrict a,float* restrict b,float alph){
+	for(int i=0;i<n; i++){
+		c[i]=a[i]*alph + b[i];
 	}
 }
 
-int __attribute__((noinline)) f2(int n, int* restrict a, int* restrict b)
-{
-	int loopcarried = 0;
-
-	for(int i = 0; i < n; i++)
-	{
-		loopcarried += a[i] * b[i];
+// dot product of a nd b
+int __attribute__((noinline)) f2(int n,int* restrict a, int* restrict b){
+	int dot =0;
+	for(int i = 0; i < n; i++){
+		dot += a[i]*b[i];
 	}
-
-	return loopcarried;
+	return dot;
 }
 
-void __attribute__((noinline)) f3(int n, int* restrict c, int* restrict a, int* restrict b, int* restrict mypred)
-{
-	for(int i = 0; i < n; i++)
-	{
-		int left = a[i];
-		int right = b[i];
-		c[i] = mypred[i] ? left : right;
-	}
-}
-
-void __attribute__((noinline)) f4(int n, int* restrict c, int* restrict a, int* restrict b)
-{
-	for(int i = 0; i < n; i++)
-	{
-		c[2 * i] = a[i];
-		c[2 * i + 1] = b[i];
+// c =a if guess[i] is true otherwise c=b
+void __attribute__((noinline)) f3(int n,int* restrict c,int* restrict a, int* restrict b,int* restrict guess){
+	for(int i = 0; i < n; i++){
+		int a_val = a[i];
+		int b_val =b[i];
+		if (guess[i]){
+			c[i]= a_val;
+		} else{
+			c[i] =b_val;
+		}
 	}
 }
 
-enum { NMAX = 4096 };
+// c[2*i] = a[i], c[2*i + 1] = b[i]
+void __attribute__((noinline)) f4(int n,int* restrict c,int* restrict a,int* restrict b){
+	for(int i = 0; i < n; i++){
+		c[2*i] = a[i];
+		c[2*i + 1] = b[i];
+	}
+}
 
-static void fill_float(float* p, int n, int seed)
-{
+static void fill_float(float* p, int n, int seed){
 	for(int i = 0; i < n; i++)
 	{
 		p[i] = (float)((seed + i * 3) % 17);
@@ -81,8 +77,8 @@ static unsigned checksum(const float* f, int n, const int* a, int na, const int*
 
 int main()
 {
-	static float a[NMAX], b[NMAX], c[NMAX];
-	static int ia[NMAX], ib[NMAX], ic[NMAX], mypred[NMAX], out[NMAX * 2];
+	static float a[max_val], b[max_val], c[max_val];
+	static int ia[max_val], ib[max_val], ic[max_val], mypred[max_val], out[max_val * 2];
 	int sizes[5] = {7, 16, 1023, 1024, 2048};
 
 	for(int s = 0; s < 5; s++)
