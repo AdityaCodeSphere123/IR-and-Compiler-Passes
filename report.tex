@@ -421,7 +421,7 @@ br label %1
 1:
 %.0 = phi i32 [ 0, %0 ], [ %18, %17 ]
 %2 = icmp slt i32 %.0, 3
-...
+br i1 %2, label %3, label %19
 
 17:
 %18 = add nsw i32 %.0, 1
@@ -430,7 +430,10 @@ br label %1, !llvm.loop !5
 
 \textbf{Explanation:} Change made by \texttt{mem2reg}. In \texttt{f2}, the loop
 counter becomes a phi node. Earlier the loop counter was in the stack slot. Now
-it is promoted to a register.
+it is promoted to a register. After the compare, the branch goes into the
+loop body if the counter is still less than 3, and leaves the loop otherwise.
+The increment adds one to that phi value and jumps back to the header, with
+no store back to the stack.
 
 \subsection*{2)}
 
@@ -689,75 +692,75 @@ Pass & Description & \texttt{-O0} & \texttt{-O1} & \texttt{-O2} & \texttt{-O3} \
 Pass & Description & \texttt{-O0} & \texttt{-O1} & \texttt{-O2} & \texttt{-O3} \\
 \hline
 \endhead
-\texttt{adce} & Removes instructions whose results are never used. & 0 & 1 & 1 & 1 \\
-\texttt{aggressive-instcombine} & Extra peephole simplifications, only worth running from \texttt{-O2}. & 0 & 0 & 1 & 1 \\
-\texttt{alignment-from-assumptions} & Improves load/store alignment using \texttt{llvm.assume} hints. & 0 & 1 & 1 & 1 \\
-\texttt{always-inline} & Inlines functions marked \texttt{always\_inline}. & 1 & 1 & 1 & 1 \\
-\texttt{annotation2metadata} & Turns source annotations into IR metadata. & 0 & 1 & 1 & 1 \\
-\texttt{argpromotion} & Replaces a read-only pointer argument with its value. & 0 & 0 & 0 & 1 \\
-\texttt{bdce} & Removes individually unused bits of a value. & 0 & 1 & 1 & 1 \\
-\texttt{called-value-propagation} & Figures out the target of an indirect call when possible. & 0 & 1 & 1 & 1 \\
-\texttt{callsite-splitting} & Splits a call so each caller path can be optimised separately. & 0 & 0 & 0 & 1 \\
-\texttt{chr} & Straightens out a chain of hot/cold branches. & 0 & 0 & 0 & 1 \\
-\texttt{constmerge} & Merges multiple global constants that have identical values into one. & 0 & 1 & 1 & 1 \\
-\texttt{constraint-elimination} & Removes comparisons already implied by an earlier one. & 0 & 0 & 1 & 1 \\
-\texttt{coro-cleanup} & Final cleanup step for coroutines. & 1 & 1 & 1 & 1 \\
-\texttt{coro-early} & Early setup step for coroutines. & 1 & 1 & 1 & 1 \\
-\texttt{coro-elide} & Skips allocating a coroutine frame when not needed. & 0 & 1 & 1 & 1 \\
-\texttt{coro-split} & Splits a coroutine into its resume/destroy/cleanup parts. & 1 & 1 & 1 & 1 \\
-\texttt{correlated-propagation} & Reuses facts proven true earlier in a branch. & 0 & 0 & 2 & 2 \\
-\texttt{deadargelim} & Removes unused function arguments. & 0 & 1 & 1 & 1 \\
-\texttt{div-rem-pairs} & Keeps a matching div and rem together for one instruction. & 0 & 1 & 1 & 1 \\
-\texttt{dse} & Removes a store that gets overwritten before it's read. & 0 & 0 & 1 & 1 \\
-\texttt{early-cse} & Removes duplicate computations early, before loop passes run. & 0 & 2 & 2 & 2 \\
-\texttt{elim-avail-extern} & Drops function bodies that are no longer needed locally. & 0 & 1 & 1 & 1 \\
-\texttt{float2int} & Does float work as integers when the result is the same. & 0 & 1 & 1 & 1 \\
-\texttt{forceattrs} & Applies attributes passed on the command line. & 0 & 1 & 1 & 1 \\
-\texttt{function-attrs} & Marks functions as \texttt{readonly}, \texttt{nocapture}, and similar. & 0 & 2 & 2 & 2 \\
-\texttt{globaldce} & Removes globals and functions that are never used. & 1 & 2 & 2 & 2 \\
-\texttt{globalopt} & Simplifies and shrinks global variables. & 0 & 2 & 2 & 2 \\
-\texttt{gvn} & Removes a computation that duplicates an earlier one. & 0 & 0 & 1 & 1 \\
-\texttt{indvars} & Simplifies loop counters into a standard form. & 0 & 1 & 1 & 1 \\
-\texttt{infer-alignment} & Works out stronger alignment for loads and stores. & 0 & 2 & 2 & 2 \\
-\texttt{inferattrs} & Adds known attributes to standard library calls. & 0 & 1 & 1 & 1 \\
-\texttt{inject-tli-mappings} & Notes which library calls have a vector version. & 0 & 1 & 1 & 1 \\
-\texttt{inline} & The main inliner, based on a cost heuristic. & 0 & 1 & 1 & 1 \\
-\texttt{instcombine} & General peephole simplifier; runs many times. & 0 & 8 & 8 & 8 \\
-\texttt{instsimplify} & Simplifies instructions without creating new ones. & 0 & 1 & 1 & 1 \\
-\texttt{ipsccp} & Propagates constants across function calls. & 0 & 1 & 1 & 1 \\
-\texttt{jump-threading} & Skips a branch whose outcome is already known. & 0 & 0 & 2 & 2 \\
-\texttt{libcalls-shrinkwrap} & Guards an expensive library call with a cheap check. & 0 & 1 & 1 & 1 \\
-\texttt{licm} & Moves loop-invariant work out of the loop. & 0 & 3 & 4 & 4 \\
-\texttt{loop-deletion} & Removes loops that have no effect. & 0 & 2 & 2 & 2 \\
-\texttt{loop-distribute} & Splits one loop into two independent loops. & 0 & 1 & 1 & 1 \\
-\texttt{loop-idiom} & Replaces a copy-style loop with \texttt{memcpy}. & 0 & 1 & 1 & 1 \\
-\texttt{loop-instsimplify} & Runs instruction simplification inside loops. & 0 & 1 & 1 & 1 \\
-\texttt{loop-load-elim} & Avoids reloading a value already stored last iteration. & 0 & 1 & 1 & 1 \\
-\texttt{loop-rotate} & Turns a while-style loop into a do-while-style loop. & 0 & 2 & 2 & 2 \\
-\texttt{loop-simplifycfg} & Simplifies the control flow inside a loop. & 0 & 1 & 1 & 1 \\
-\texttt{loop-sink} & Moves work into the part of the loop that needs it. & 0 & 1 & 1 & 1 \\
-\texttt{loop-unroll} & Unrolls a loop a few times. & 0 & 1 & 1 & 1 \\
-\texttt{loop-unroll-full} & Fully unrolls a loop with a small constant trip count. & 0 & 1 & 1 & 1 \\
-\texttt{loop-vectorize} & Rewrites a loop to use vector instructions. & 0 & 1 & 1 & 1 \\
-\texttt{lower-constant-intrinsics} & Expands intrinsics like \texttt{llvm.objectsize} into constants. & 0 & 1 & 1 & 1 \\
-\texttt{lower-expect} & Turns \texttt{llvm.expect} hints into branch weights. & 0 & 1 & 1 & 1 \\
-\texttt{mem2reg} & Promotes stack slots into SSA registers. & 0 & 1 & 1 & 1 \\
-\texttt{memcpyopt} & Replaces copy-style load/store sequences with \texttt{memcpy}. & 0 & 1 & 1 & 1 \\
-\texttt{mldst-motion} & Hoists a load/store shared by both if/else branches. & 0 & 0 & 1 & 1 \\
-\texttt{move-auto-init} & Moves variable-init memsets off the hot path. & 0 & 0 & 1 & 1 \\
-\texttt{openmp-opt} & Optimises OpenMP calls (not used here). & 0 & 1 & 1 & 1 \\
-\texttt{openmp-opt-cgscc} & OpenMP optimisation run alongside the inliner. & 0 & 0 & 1 & 1 \\
-\texttt{reassociate} & Reorders \texttt{+}/\texttt{*} chains to expose more folding. & 0 & 1 & 1 & 1 \\
-\texttt{rel-lookup-table-converter} & Makes switch jump tables use relative offsets. & 0 & 1 & 1 & 1 \\
-\texttt{rpo-function-attrs} & Infers function attributes across the call graph. & 0 & 1 & 1 & 1 \\
-\texttt{sccp} & Folds a value to a constant along reachable branches only. & 0 & 1 & 1 & 1 \\
-\texttt{simple-loop-unswitch} & Pulls a loop-invariant branch out of the loop. & 0 & 1 & 1 & 1 \\
-\texttt{simplifycfg} & Fewer blocks and branches; runs many times. & 0 & 8 & 8 & 8 \\
-\texttt{slp-vectorizer} & Vectorises independent scalar ops within one block. & 0 & 0 & 1 & 1 \\
-\texttt{speculative-execution} & Hoists a cheap op above a branch when safe. & 0 & 0 & 1 & 1 \\
-\texttt{sroa} & Breaks a struct/array alloca into separate scalars. & 0 & 4 & 4 & 4 \\
-\texttt{tailcallelim} & Turns a tail call into a jump back to the start. & 0 & 1 & 2 & 2 \\
-\texttt{vector-combine} & Cleans up vector instructions after vectorisation. & 0 & 1 & 2 & 2 \\
+\texttt{adce} & Removes instructions whose results are never used & 0 & 1 & 1 & 1 \\
+\texttt{aggressive-instcombine} & Extra peephole simplifications, only worth running from \texttt{-O2} & 0 & 0 & 1 & 1 \\
+\texttt{alignment-from-assumptions} & Improves load/store alignment using \texttt{llvm.assume} hints & 0 & 1 & 1 & 1 \\
+\texttt{always-inline} & Inlines functions marked \texttt{always\_inline} & 1 & 1 & 1 & 1 \\
+\texttt{annotation2metadata} & Turns source annotations into IR metadata & 0 & 1 & 1 & 1 \\
+\texttt{argpromotion} & Replaces a read-only pointer argument with its value & 0 & 0 & 0 & 1 \\
+\texttt{bdce} & Removes individually unused bits of a value & 0 & 1 & 1 & 1 \\
+\texttt{called-value-propagation} & Figures out the target of an indirect call when possible & 0 & 1 & 1 & 1 \\
+\texttt{callsite-splitting} & Splits a call so each caller path can be optimised separately & 0 & 0 & 0 & 1 \\
+\texttt{chr} & Straightens out a chain of hot/cold branches & 0 & 0 & 0 & 1 \\
+\texttt{constmerge} & Merges multiple global constants that have identical values into one & 0 & 1 & 1 & 1 \\
+\texttt{constraint-elimination} & Removes comparisons already implied by an earlier one & 0 & 0 & 1 & 1 \\
+\texttt{coro-cleanup} & Final cleanup step for coroutines & 1 & 1 & 1 & 1 \\
+\texttt{coro-early} & Early setup step for coroutines & 1 & 1 & 1 & 1 \\
+\texttt{coro-elide} & Skips allocating a coroutine frame when not needed & 0 & 1 & 1 & 1 \\
+\texttt{coro-split} & Splits a coroutine into its resume/destroy/cleanup parts & 1 & 1 & 1 & 1 \\
+\texttt{correlated-propagation} & Reuses facts proven true earlier in a branch & 0 & 0 & 2 & 2 \\
+\texttt{deadargelim} & Removes unused function arguments & 0 & 1 & 1 & 1 \\
+\texttt{div-rem-pairs} & Keeps a matching div and rem together for one instruction & 0 & 1 & 1 & 1 \\
+\texttt{dse} & Removes a store that gets overwritten before it's read & 0 & 0 & 1 & 1 \\
+\texttt{early-cse} & Removes duplicate computations early, before loop passes run & 0 & 2 & 2 & 2 \\
+\texttt{elim-avail-extern} & Drops function bodies that are no longer needed locally & 0 & 1 & 1 & 1 \\
+\texttt{float2int} & Does float work as integers when the result is the same & 0 & 1 & 1 & 1 \\
+\texttt{forceattrs} & Applies attributes passed on the command line & 0 & 1 & 1 & 1 \\
+\texttt{function-attrs} & Marks functions as \texttt{readonly}, \texttt{nocapture}, and similar & 0 & 2 & 2 & 2 \\
+\texttt{globaldce} & Removes globals and functions that are never used & 1 & 2 & 2 & 2 \\
+\texttt{globalopt} & Simplifies and shrinks global variables & 0 & 2 & 2 & 2 \\
+\texttt{gvn} & Removes a computation that duplicates an earlier one & 0 & 0 & 1 & 1 \\
+\texttt{indvars} & Simplifies loop counters into a standard form & 0 & 1 & 1 & 1 \\
+\texttt{infer-alignment} & Works out stronger alignment for loads and stores & 0 & 2 & 2 & 2 \\
+\texttt{inferattrs} & Adds known attributes to standard library calls & 0 & 1 & 1 & 1 \\
+\texttt{inject-tli-mappings} & Notes which library calls have a vector version & 0 & 1 & 1 & 1 \\
+\texttt{inline} & The main inliner, based on a cost heuristic & 0 & 1 & 1 & 1 \\
+\texttt{instcombine} & General peephole simplifier; runs many times & 0 & 8 & 8 & 8 \\
+\texttt{instsimplify} & Simplifies instructions without creating new ones & 0 & 1 & 1 & 1 \\
+\texttt{ipsccp} & Propagates constants across function calls & 0 & 1 & 1 & 1 \\
+\texttt{jump-threading} & Skips a branch whose outcome is already known & 0 & 0 & 2 & 2 \\
+\texttt{libcalls-shrinkwrap} & Guards an expensive library call with a cheap check & 0 & 1 & 1 & 1 \\
+\texttt{licm} & Moves loop-invariant work out of the loop & 0 & 3 & 4 & 4 \\
+\texttt{loop-deletion} & Removes loops that have no effect & 0 & 2 & 2 & 2 \\
+\texttt{loop-distribute} & Splits one loop into two independent loops & 0 & 1 & 1 & 1 \\
+\texttt{loop-idiom} & Replaces a copy-style loop with \texttt{memcpy} & 0 & 1 & 1 & 1 \\
+\texttt{loop-instsimplify} & Runs instruction simplification inside loops & 0 & 1 & 1 & 1 \\
+\texttt{loop-load-elim} & Avoids reloading a value already stored last iteration & 0 & 1 & 1 & 1 \\
+\texttt{loop-rotate} & Turns a while-style loop into a do-while-style loop & 0 & 2 & 2 & 2 \\
+\texttt{loop-simplifycfg} & Simplifies the control flow inside a loop & 0 & 1 & 1 & 1 \\
+\texttt{loop-sink} & Moves work into the part of the loop that needs it & 0 & 1 & 1 & 1 \\
+\texttt{loop-unroll} & Unrolls a loop a few times & 0 & 1 & 1 & 1 \\
+\texttt{loop-unroll-full} & Fully unrolls a loop with a small constant trip count & 0 & 1 & 1 & 1 \\
+\texttt{loop-vectorize} & Rewrites a loop to use vector instructions & 0 & 1 & 1 & 1 \\
+\texttt{lower-constant-intrinsics} & Expands intrinsics like \texttt{llvm.objectsize} into constants & 0 & 1 & 1 & 1 \\
+\texttt{lower-expect} & Turns \texttt{llvm.expect} hints into branch weights & 0 & 1 & 1 & 1 \\
+\texttt{mem2reg} & Promotes stack slots into SSA registers & 0 & 1 & 1 & 1 \\
+\texttt{memcpyopt} & Replaces copy-style load/store sequences with \texttt{memcpy} & 0 & 1 & 1 & 1 \\
+\texttt{mldst-motion} & Hoists a load/store shared by both if/else branches & 0 & 0 & 1 & 1 \\
+\texttt{move-auto-init} & Moves variable-init memsets off the hot path & 0 & 0 & 1 & 1 \\
+\texttt{openmp-opt} & Optimises OpenMP calls (not used here) & 0 & 1 & 1 & 1 \\
+\texttt{openmp-opt-cgscc} & OpenMP optimisation run alongside the inliner & 0 & 0 & 1 & 1 \\
+\texttt{reassociate} & Reorders \texttt{+}/\texttt{*} chains to expose more folding & 0 & 1 & 1 & 1 \\
+\texttt{rel-lookup-table-converter} & Makes switch jump tables use relative offsets & 0 & 1 & 1 & 1 \\
+\texttt{rpo-function-attrs} & Infers function attributes across the call graph & 0 & 1 & 1 & 1 \\
+\texttt{sccp} & Folds a value to a constant along reachable branches only & 0 & 1 & 1 & 1 \\
+\texttt{simple-loop-unswitch} & Pulls a loop-invariant branch out of the loop & 0 & 1 & 1 & 1 \\
+\texttt{simplifycfg} & Fewer blocks and branches; runs many times & 0 & 8 & 8 & 8 \\
+\texttt{slp-vectorizer} & Vectorises independent scalar ops within one block & 0 & 0 & 1 & 1 \\
+\texttt{speculative-execution} & Hoists a cheap op above a branch when safe & 0 & 0 & 1 & 1 \\
+\texttt{sroa} & Breaks a struct/array alloca into separate scalars & 0 & 4 & 4 & 4 \\
+\texttt{tailcallelim} & Turns a tail call into a jump back to the start & 0 & 1 & 2 & 2 \\
+\texttt{vector-combine} & Cleans up vector instructions after vectorisation & 0 & 1 & 2 & 2 \\
 \hline
 \end{longtable}
 }
@@ -913,8 +916,11 @@ the loop is actually vectorised from O2.
 \section{Part D}
 
 \texttt{f1}, \texttt{f2} and \texttt{f3} are the three required loops
-in \texttt{vector.c}. \texttt{f4} is a small extra interleave so that
-\texttt{shufflevector} shows up. Length is an argument. Array pointers
+in \texttt{vector.c}. \texttt{f4} is an extra interleave so that
+\texttt{shufflevector} also appears as a store shuffle, not only as the
+\texttt{alph} broadcast. \texttt{f5} returns the last value written in
+the loop, so the vectoriser has to pull one lane out with
+\texttt{extractelement}. Length is an argument. Array pointers
 that must not overlap are \texttt{restrict}. \texttt{main} uses buffers
 of 4096 elements and prints a checksum for five sizes.
 
@@ -935,11 +941,17 @@ With vectorisation off, each step is one scalar load / arithmetic /
 store. The remarks with it on are:
 
 \begin{lstlisting}[language={}]
-vector.c:8:  vectorized loop (vectorization width: 4, interleaved count: 4)
-vector.c:16: vectorized loop (vectorization width: 4, interleaved count: 4)
-vector.c:24: vectorized loop (vectorization width: 4, interleaved count: 4)
-vector.c:33: vectorized loop (vectorization width: 4, interleaved count: 2)
+vector.c:9:  vectorized loop (vectorization width: 4, interleaved count: 4)
+vector.c:17: vectorized loop (vectorization width: 4, interleaved count: 4)
+vector.c:25: vectorized loop (vectorization width: 4, interleaved count: 4)
+vector.c:34: vectorized loop (vectorization width: 4, interleaved count: 2)
+vector.c:43: vectorized loop (vectorization width: 4, interleaved count: 4)
 \end{lstlisting}
+
+Those five lines are the \texttt{for} loops of \texttt{f1} through
+\texttt{f5} in the submitted \texttt{vector.c}. \texttt{f1} starts at
+line 9 because a one-line comment sits above the function. \texttt{f5}
+was added at the end, so it did not move the earlier loops.
 
 {\small
 \begin{tabular}{llll}
@@ -950,17 +962,20 @@ Loop & What it does & Width & Interleave \\
 \texttt{f2} & integer dot product & 4 & 4 \\
 \texttt{f3} & pick $a[i]$ or $b[i]$ from \texttt{guess} & 4 & 4 \\
 \texttt{f4} & write $a[i]$, $b[i]$ into even/odd slots & 4 & 2 \\
+\texttt{f5} & $c[i]=3a[i]$, return last $c[i]$ & 4 & 4 \\
 \hline
 \end{tabular}
 }
 
 Width 4 is 128-bit NEON divided by a 32-bit \texttt{float} or
 \texttt{i32}. Interleave 4 means four of those vectors in the body, so
-16 source iterations per trip of \texttt{f1}--\texttt{f3}. The leftover
+16 source iterations per trip of \texttt{f1}--\texttt{f3} and
+\texttt{f5}. The leftover
 tail is scalar, which is why $n=7$ still works.
 
 The vector types in \texttt{vector.vector.ll} are \texttt{<4 x float>},
 \texttt{<4 x i32>}, \texttt{<4 x i1>} and \texttt{<8 x i32>}.
+\texttt{f5} reuses \texttt{<4 x i32>}; it does not add a new type.
 
 \subsection*{Tracing \texttt{f3}}
 
@@ -1001,9 +1016,20 @@ vector.c: remark: the cost-model indicates that vectorization is not beneficial 
 vector.c: remark: interleaved loop (interleaved count: 4) [-Rpass=loop-vectorize]
 \end{lstlisting}
 
-The IR then selected an \texttt{a} or \texttt{b} pointer
-(\texttt{select i1 ..., ptr ..., ptr ...}) and did a scalar load.
-There was no \texttt{<4 x i32> select}. An \texttt{if}/\texttt{else}
+The IR then chose one pointer and loaded through it. One pass of
+that loop is:
+
+\begin{lstlisting}
+%14 = icmp eq i32 %13, 0
+%15 = select i1 %14, ptr %3, ptr %2
+%16 = getelementptr inbounds i32, ptr %15, i64 %11
+%17 = load i32, ptr %16, align 4
+\end{lstlisting}
+
+\texttt{\%13} is \texttt{guess[i]}. If it is 0, \texttt{\%15} is the
+\texttt{b} pointer; otherwise it is the \texttt{a} pointer. Then one
+integer is loaded through that pointer and stored to \texttt{c[i]}.
+There is no \texttt{<4 x i32> select}. An \texttt{if}/\texttt{else}
 that wrote \texttt{c[i]} got the same two remarks.
 
 Only the loop body was changed. Loading both ints first, then using
@@ -1077,14 +1103,31 @@ broadcast. The other use is \texttt{f4}
 store <8 x i32> %29, ptr %27
 \end{lstlisting}
 
-The mask \texttt{0,4,1,5,\ldots} is \texttt{a0,b0,a1,b1,\ldots}. The
+The mask is 0, 4, 1, 5, 2, 6, 3, 7. That order is
+\texttt{a0}, \texttt{b0}, \texttt{a1}, \texttt{b1}, \texttt{a2},
+\texttt{b2}, \texttt{a3}, \texttt{b3}. The
 result is \texttt{<8 x i32>}, so eight ints go out in one store.
 Interleave 2 means two of these shuffles per trip.
 
-\textbf{\texttt{extractelement}.} Not emitted. The reduction uses
-\texttt{llvm.vector.reduce.add.v4i32} instead of pulling lanes out.
-\texttt{f4} was added for a real shuffle; it still did not produce
-\texttt{extractelement}.
+\textbf{\texttt{extractelement}.} \texttt{f2} never emits this. It
+folds the four partial sums with
+\texttt{llvm.vector.reduce.add.v4i32} instead of taking lanes out one
+by one. \texttt{f4} did not change that; it only made another
+shuffle. So \texttt{f5} stores \texttt{c[i] = 3 * a[i]} and
+\texttt{return}s the last \texttt{c[i]}. That last integer has to
+come out of the vector:
+
+\begin{lstlisting}
+%23 = mul nsw <4 x i32> %19, <i32 3, i32 3, i32 3, i32 3>
+store <4 x i32> %23, ptr %27
+%31 = extractelement <4 x i32> %23, i64 3
+\end{lstlisting}
+
+Each trip of \texttt{f5} does sixteen \texttt{i} values (width 4,
+interleave 4). \texttt{\%23} is the last four. Lane 3 is the last of
+those sixteen, so that is what the function returns when the whole
+\texttt{n} fitted in the vector loop. For a leftover tail, the
+scalar loop writes \texttt{last}, same as the C.
 
 \textbf{\texttt{select}.} The vector \texttt{select <4 x i1>} in
 \texttt{f3}.
@@ -1105,17 +1148,18 @@ scalar tail ran as well.
 \hline
 $n$ & checksum & scalar and vector match \\
 \hline
-7 & 3709175202 & yes \\
-16 & 2972014643 & yes \\
-1023 & 2172318783 & yes \\
-1024 & 1106397801 & yes \\
-2048 & 1425210359 & yes \\
+7 & 1705808096 & yes \\
+16 & 2263840470 & yes \\
+1023 & 1403419796 & yes \\
+1024 & 2771994064 & yes \\
+2048 & 2356598585 & yes \\
 \hline
 \end{tabular}
 }
 
 The checksum hashes the float bits (not a cast to \texttt{int}),
-plus the integer arrays and the dot product. The two binaries
+plus the integer arrays, the dot product, the last value returned
+from \texttt{f5} and the \texttt{f5} stores. The two binaries
 printed the same five lines.
 
 \end{document}

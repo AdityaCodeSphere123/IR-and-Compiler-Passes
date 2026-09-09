@@ -2,7 +2,7 @@ Machines
 --------
 Parts A and B: Homebrew LLVM 23.1.0, Apple M3.
 
-Parts C and D: Homebrew LLVM 18.1.8, Apple M4. 
+Parts C and D: Homebrew LLVM 18.1.8, Apple M1. 
 
 
 Parts A and B

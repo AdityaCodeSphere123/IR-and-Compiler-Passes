@@ -37,6 +37,16 @@ void __attribute__((noinline)) f4(int n,int* restrict c,int* restrict a,int* res
 	}
 }
 
+// last value of the loop is returned
+int __attribute__((noinline)) f5(int n,int* restrict c,int* restrict a){
+	int last = 0;
+	for(int i = 0; i < n; i++){
+		last = a[i] * 3;
+		c[i] = last;
+	}
+	return last;
+}
+
 static void float_fill(float* p, int n, int start){
 	for(int i = 0; i < n; i++){
 		p[i] = (float)((start + i * 3) % 17);
@@ -70,7 +80,7 @@ static unsigned checksum(const float* f, int n, const int* a, int na, const int*
 int main()
 {
 	static float a[max_val], b[max_val], c[max_val];
-	static int ia[max_val], ib[max_val], ic[max_val], mypred[max_val], out[max_val * 2];
+	static int ia[max_val], ib[max_val], ic[max_val], id[max_val], mypred[max_val], out[max_val * 2];
 	int sizes[5] = {7, 16, 1023, 1024, 2048};
 
 	for(int s = 0; s < 5; s++){
@@ -85,7 +95,12 @@ int main()
 		int d = f2(n, ia, ib);
 		f3(n, ic, ia, ib, mypred);
 		f4(n, out, ia, ib);
-		printf("%d %u\n", n, checksum(c, n, ic, n, out, 2 * n, d));
+		int last = f5(n, id, ia);
+		unsigned h = checksum(c, n, ic, n, out, 2 * n, d + last);
+		for(int i = 0; i < n; i++){
+			h = h * 131u + (unsigned)id[i];
+		}
+		printf("%d %u\n", n, h);
 	}
 
 	return 0;
