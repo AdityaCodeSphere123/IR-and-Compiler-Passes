@@ -103,6 +103,32 @@
 \hypersetup{pageanchor=true}
 \pagenumbering{arabic}
 
+\section*{Machines used}
+
+Parts A and B were done on one machine. Parts C and D were
+done on another. The two Homebrew LLVM installs are not the
+same version.
+
+\textbf{Parts A and B.} Apple M3, arm64 macOS. \texttt{opt} and
+\texttt{clang} were Homebrew LLVM 23.1.0.
+
+\begin{lstlisting}[language={}]
+Homebrew LLVM version 23.1.0
+Optimized build.
+Default target: arm64-apple-darwin25.5.0
+Host CPU: apple-m3
+\end{lstlisting}
+
+\textbf{Parts C and D.} Apple M1, arm64 macOS. \texttt{opt} and
+\texttt{clang} were Homebrew LLVM 18.1.8.
+
+\begin{lstlisting}[language={}]
+Homebrew LLVM version 18.1.8
+Optimized build.
+Default target: arm64-apple-darwin25.5.0
+Host CPU: apple-m1
+\end{lstlisting}
+
 \section{Part A}
 
 All except \texttt{select} are taken from \texttt{opcodes.O0.ll}.
@@ -289,21 +315,6 @@ to take from one of the branches. The result type is \texttt{i32}.
   \caption{\texttt{f2} after \texttt{mem2reg} (\texttt{opt -S -passes=mem2reg opcodes.O0.ll}).}
 \end{figure}
 
-After \texttt{mem2reg} the loop index is the only phi in \texttt{f2}.
-\texttt{loopcarried} is a global, so it stays as \texttt{load}/\texttt{store}
-and does not become a phi.
-
-\begin{tabular}{llll}
-\hline
-Phi & Block & Incoming edge & Value \\
-\hline
-\texttt{\%.0} (loop index) & \texttt{\%1} & \texttt{\%0} $\to$ \texttt{\%1} (first time) & \texttt{0} \\
-\texttt{\%.0} (loop index) & \texttt{\%1} & \texttt{\%17} $\to$ \texttt{\%1} (latch) & \texttt{\%18} ($i{+}1$) \\
-\hline
-\end{tabular}
-
-The if/else that does \texttt{break} just jumps to the exit block. Those
-edges do not feed a phi, because they do not produce a new SSA value.
 
 \subsection*{After \texttt{mem2reg}: struct access}
 
@@ -372,29 +383,14 @@ the GEPs only built the pointer.
 
 \section{Part B}
 
+Counts and named pipelines here are from Homebrew LLVM 23.1.0.
+
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{opcode_table.png}
   \caption{Opcode counts per function and optimisation level.}
 \end{figure}
 
-At \texttt{-O0} most of the IR is stack slots: lots of \texttt{alloca},
-\texttt{load} and \texttt{store} for locals like the loop index. After
-\texttt{-O1} those temps are gone. The stores into \texttt{arr} in
-\texttt{f1} are still there: \texttt{arr} is a local, but it is an
-aggregate reached through GEPs, so \texttt{mem2reg} will not promote
-it. That is also why \texttt{sroa} exists later.
-
-The table was rebuilt from the current \texttt{opcodes.c} through
-\texttt{script.py}. \texttt{f3} at \texttt{-O0} has five allocas
-(\texttt{a}, \texttt{t}, the inner \texttt{long long a}, \texttt{b},
-\texttt{d}) and case 3 shows up as \texttt{sitofp}, \texttt{fmul} and
-\texttt{fptosi}. Empty \texttt{main} on this clang is just
-\texttt{ret i32 0}, so it has no return-slot \texttt{alloca}.
-
-The table also does not only shrink. \texttt{f2} has more blocks at
-\texttt{-O2} than at \texttt{-O1}, so a higher level can make more IR,
-not less.
 
 \subsection*{1)}
 
@@ -473,8 +469,7 @@ ret void
 \texttt{simplifycfg} deletes the unused arms and the \texttt{switch}.
 What is left is only case 1: the ternary becomes a \texttt{select}, then
 \texttt{call @f1}. That is why the Part B table goes from 9 blocks to 1
-and from one \texttt{switch} to zero at \texttt{-O1}. This is not
-\texttt{mem2reg}; \texttt{mem2reg} alone still leaves the four cases.
+and from one \texttt{switch} to zero at \texttt{-O1}.
 
 \subsection*{3)}
 
@@ -528,8 +523,8 @@ into a common \texttt{or.cond} check, simplifying the branch specification.
 
 \section{Part C}
 
-These numbers are from Homebrew LLVM 18.1.8 on arm64 macOS
-(\texttt{opt --version}), the same install used for \texttt{clang}.
+These numbers are from Homebrew LLVM 18.1.8, the same
+\texttt{opt} and \texttt{clang}.
 
 The default pipelines were printed with:
 
@@ -541,13 +536,13 @@ The same command was run for \texttt{O0}, \texttt{O2} and \texttt{O3}.
 \texttt{opt --print-passes} was used to see which names are real
 transforms and which are only analyses.
 
-The dump also contains wrappers like \texttt{function(...)} and
-\texttt{loop(...)}, plus analyses and remarks
-(\texttt{require}, \texttt{invalidate}, \texttt{recompute-globalsaa},
-\texttt{verify}, \texttt{cg-profile}). Those were not counted. One
-AArch64 class name appeared in the dump; it cannot go in
-\texttt{-passes='...'} so it was skipped. Repeated transforms were
-kept, in the order they ran.
+The dump is not only transforms. It also wraps passes in
+\texttt{function} and \texttt{loop}, and it prints analyses such as
+\texttt{require}, \texttt{invalidate} and \texttt{verify}. Those were
+left out of the count. There is also an AArch64 class name that
+\texttt{opt} will not take as a pass, so that was left out too. If
+the same transform ran more than once each run was kept in the
+order it appeared.
 
 \subsection*{Counts}
 
@@ -854,17 +849,16 @@ mid-pipeline sroa, and again after slp-vectorizer.
 in O1 at all. When they start at O2 they already run twice: once
 before the loop nest and once after it.
 
-\texttt{instcombine} and \texttt{simplifycfg} stay at 8 times from
-O1 up. They are re-run whenever an earlier pass may have created
-new fold opportunities. The count does not grow; the slot numbers
-do, because extra O2/O3 passes are inserted between those runs.
+\texttt{instcombine} and \texttt{simplifycfg} still run 8 times
+from O1 onwards. Other passes keep making new work for them, so they
+are run again and how often they run does not change. Where they sit
+in the list does because O2 and O3 put extra passes in between.
 
-The same extra passes also push most other O1 names to a later
-index. The opening five names
-(\texttt{annotation2metadata} \ldots{} \texttt{lower-expect}) stay
-in slots 1--5. After that, almost every index moves. A few
-examples from our ordered lists:
-
+Those extra passes also slide most O1 names further down the
+list. The first five stay put, that is slots 1 to 5 are still
+\texttt{annotation2metadata}, \texttt{forceattrs},
+\texttt{inferattrs}, \texttt{coro-early} and
+\texttt{lower-expect}. After that the numbers move. 
 {\small
 \begin{tabular}{lccc}
 \hline
@@ -878,8 +872,8 @@ Pass & \texttt{-O1} slots & \texttt{-O2} slots & \texttt{-O3} slots \\
 \end{tabular}
 }
 
-\texttt{instcombine} is the same idea, but it has eight slots at
-every level from O1, so they are easier to read on their own:
+\texttt{instcombine} also moves, but it has eight places at each
+level, so that is a separate table:
 
 {\small
 \begin{tabular}{ll}
@@ -893,56 +887,39 @@ Level & Slots \\
 \end{tabular}
 }
 
-\texttt{memcpyopt} is the clearest move: at O1 it sits right after
-the first sroa. At O2 it is delayed until after adce, because gvn
-and jump-threading run first.
+\texttt{memcpyopt} is easy to see. At O1 it is right after the
+\texttt{sroa} that follows \texttt{loop-unroll-full} (slot 38, then
+39). At O2 it comes after \texttt{adce}, because \texttt{gvn} and
+\texttt{jump-threading} run first.
 
-The dump can also change parameters when the name is the same.
+The same name can also be given different options.
 
 \begin{lstlisting}[language={}]
 loop-unroll, loop-vectorize, simple-loop-unswitch
 \end{lstlisting}
 
-\texttt{loop-unroll} is \texttt{loop-unroll<O1>}, \texttt{<O2>},
-\texttt{<O3>}, so it is more willing to unroll at higher levels.
-\texttt{loop-vectorize} at O1 is \texttt{vectorize-forced-only}; at
-O2/O3 it is not, so real vectorisation is an O2 thing.
-\texttt{simple-loop-unswitch} at O3 is
-\texttt{<nontrivial;trivial>} and at O1/O2 it is only trivial
-unswitch.
+\texttt{loop-unroll} is printed as \texttt{loop-unroll<O1>},
+\texttt{loop-unroll<O2>} or \texttt{loop-unroll<O3>}. A higher
+level unrolls more.
+
+\texttt{loop-vectorize} at O1 is marked
+\texttt{vectorize-forced-only}. At O2 and O3 that flag is off, so
+the loop is actually vectorised from O2.
+
+\texttt{simple-loop-unswitch} at O1 and O2 only does the cheap
+(trivial) case. At O3 it is
+\texttt{<nontrivial;trivial>}, so it also tries the harder case.
 
 \section{Part D}
 
-\texttt{f1}, \texttt{f2} and \texttt{f3} are the three required loops. \texttt{f4} is a small extra interleave so that
+\texttt{f1}, \texttt{f2} and \texttt{f3} are the three required loops
+in \texttt{vector.c}. \texttt{f4} is a small extra interleave so that
 \texttt{shufflevector} shows up. Length is an argument. Array pointers
 that must not overlap are \texttt{restrict}. \texttt{main} uses buffers
 of 4096 elements and prints a checksum for five sizes.
 
-\begin{lstlisting}[language={},basicstyle=\ttfamily\footnotesize,breaklines=false]
-void f1(int n, float* restrict c, float* restrict a, float* restrict b, float alph) {
-  for (int i = 0; i < n; i++)
-    c[i] = a[i] * alph + b[i];
-}
-
-int f2(int n, int* restrict a, int* restrict b) {
-  int dot = 0;
-  for (int i = 0; i < n; i++)
-    dot += a[i] * b[i];
-  return dot;
-}
-
-void f3(int n, int* restrict c, int* restrict a, int* restrict b, int* restrict guess) {
-  for (int i = 0; i < n; i++) {
-    int a_val = a[i];
-    int b_val = b[i];
-    c[i] = guess[i] ? a_val : b_val;
-  }
-}
-\end{lstlisting}
-
-Scalar IR first, then native vector IR on this Mac
-(\texttt{arm64}, Homebrew LLVM 18.1.8). \texttt{-march=native} here
-means NEON, not AVX.
+Scalar IR first, then native vector IR (Homebrew LLVM 18.1.8).
+\texttt{-march=native} here means NEON, not AVX.
 
 \begin{lstlisting}[language={},basicstyle=\ttfamily\footnotesize]
 clang -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm vector.c -o vector.scalar.ll
@@ -950,7 +927,8 @@ clang -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm vector.c -o vector.sca
 
 \begin{lstlisting}[language={},basicstyle=\ttfamily\footnotesize]
 clang -O3 -march=native -Rpass=loop-vectorize -Rpass-missed=loop-vectorize \
-  -S -emit-llvm vector.c -o vector.vector.ll 2> vector.remarks.txt
+  -Rpass-analysis=loop-vectorize -S -emit-llvm vector.c -o vector.vector.ll \
+  2> vector.remarks.txt
 \end{lstlisting}
 
 With vectorisation off, each step is one scalar load / arithmetic /
@@ -1014,8 +992,9 @@ for (int i = 0; i < n; i++)
   c[i] = guess[i] ? a[i] : b[i];
 \end{lstlisting}
 
-\texttt{-Rpass-missed=loop-vectorize} did not print a miss. Clang still
-touched the loop. The remarks that did print were:
+\texttt{-Rpass-missed=loop-vectorize} printed nothing for this loop.
+The cost-model note only shows up with
+\texttt{-Rpass-analysis=loop-vectorize}. What clang did print:
 
 \begin{lstlisting}[language={}]
 vector.c: remark: the cost-model indicates that vectorization is not beneficial [-Rpass-analysis=loop-vectorize]
@@ -1126,18 +1105,17 @@ scalar tail ran as well.
 \hline
 $n$ & checksum & scalar and vector match \\
 \hline
-7 & 2301122756 & yes \\
-16 & 3179001926 & yes \\
-1023 & 2561569046 & yes \\
-1024 & 4266366105 & yes \\
-2048 & 2497880110 & yes \\
+7 & 3709175202 & yes \\
+16 & 2972014643 & yes \\
+1023 & 2172318783 & yes \\
+1024 & 1106397801 & yes \\
+2048 & 1425210359 & yes \\
 \hline
 \end{tabular}
 }
 
-The checksum casts each float to \texttt{int} before hashing, so a
-last-bit FMA difference would not show up. That is expected:
-contraction can change the last bits without meaning the kernels
-disagree.
+The checksum hashes the float bits (not a cast to \texttt{int}),
+plus the integer arrays and the dot product. The two binaries
+printed the same five lines.
 
 \end{document}

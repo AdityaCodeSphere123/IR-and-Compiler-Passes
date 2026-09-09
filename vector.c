@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define max_val 4096
 
@@ -52,7 +53,9 @@ static unsigned checksum(const float* f, int n, const int* a, int na, const int*
 	unsigned h = (unsigned)extra;
 
 	for(int i = 0; i < n; i++){
-		h = h * 131u + (unsigned)(int)f[i];
+		unsigned bits;
+		memcpy(&bits, &f[i], sizeof(bits));
+		h = h * 131u + bits;
 	}
 	for(int i = 0; i < na; i++){
 		h = h * 131u + (unsigned)a[i];
